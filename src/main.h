@@ -1,12 +1,16 @@
 #ifndef MAIN_H
 #define MAIN_H 1
-#define TFT_CS_LOW  digitalWrite(15, 0);
-#define TFT_CS_HIGH digitalWrite(15, 1);
-#define TFT_DC_LOW  digitalWrite(2, 0);
-#define TFT_DC_HIGH digitalWrite(2, 1);
-#define TFT_BL_OFF  digitalWrite(4, 0);
-#define TFT_BL_ON   digitalWrite(4, 1);
-#define TFT_BUSY    digitalRead(5);
+#define TFT_CS_PIN 5
+#define TFT_DC_PIN 21
+#define TFT_RST_PIN 4
+#define TFT_BUSY_PIN 22
+#define TFT_CS_LOW  digitalWrite(TFT_CS_PIN, 0);
+#define TFT_CS_HIGH digitalWrite(TFT_CS_PIN, 1);
+#define TFT_DC_LOW  digitalWrite(TFT_DC_PIN, 0);
+#define TFT_DC_HIGH digitalWrite(TFT_DC_PIN, 1);
+#define TFT_RST_LOW  digitalWrite(TFT_RST_PIN, 0);
+#define TFT_RST_HIGH digitalWrite(TFT_RST_PIN, 1);
+#define TFT_BUSY    digitalRead(TFT_BUSY_PIN);
 
 
 /*
