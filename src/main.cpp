@@ -2,205 +2,92 @@
 #include <SPI.h>
 
 #include "main.h"
+// include library, include base class, make path known
+#include <GxEPD.h>
+
+// select the display class to use, only one
+//#include <GxGDEP015OC1/GxGDEP015OC1.cpp>
+//#include <GxGDE0213B1/GxGDE0213B1.cpp>
+//#include <GxGDEH029A1/GxGDEH029A1.cpp>
+//#include <GxGDEW027C44/GxGDEW027C44.cpp>
+//#include <GxGDEW042T2/GxGDEW042T2.cpp>
+#include <GxGDEW075Z09/GxGDEW075Z09.cpp>
+
+// uncomment next line for drawBitmap() test, (consumes RAM on ESP8266)
+//#include GxEPD_BitmapExamples
+
+// FreeFonts from Adafruit_GFX
+#include <Fonts/FreeMonoBold9pt7b.h>
+#include <Fonts/FreeMonoBold12pt7b.h>
+#include <Fonts/FreeMonoBold18pt7b.h>
+#include <Fonts/FreeMonoBold24pt7b.h>
 
 
-void initDisplay();
+#include <GxIO/GxIO_SPI/GxIO_SPI.cpp>
+#include <GxIO/GxIO.cpp>
 
-inline void sendCMD(uint8_t index)
+//GxIO_SPI(SPIClass& spi, int8_t cs, int8_t dc, int8_t rst = -1, int8_t bl = -1);
+GxIO_Class io(SPI, SS, D3, D4); // arbitrary selection of D3, D4 selected for default of GxEPD_Class
+// GxGDEP015OC1(GxIO& io, uint8_t rst = D4, uint8_t busy = D2);
+GxEPD_Class display(io); // default selection of D4, D2
+
+void showBitmapExample()
 {
-    TFT_CS_LOW;
-    TFT_DC_LOW;
-    SPI.transfer(index);
-    TFT_CS_HIGH;
+#ifdef _GxBitmapExamples_H_
+  display.drawBitmap(BitmapExample1, sizeof(BitmapExample1));
+  Serial.println("BitmapExample1");
+  delay(2000);
+  display.drawBitmap(BitmapExample2, sizeof(BitmapExample2));
+  Serial.println("BitmapExample2");
+  delay(2000);
+  display.setRotation(2);
+  display.fillScreen(GxEPD_WHITE);
+  Serial.println("White");
+  // bitmap may have been shortened to fit to available RAM
+  uint16_t h = min(GxEPD_HEIGHT, sizeof(BitmapExample1) * 8 / GxEPD_WIDTH);
+  Serial.println(h);
+  display.drawBitmap(0, 0, BitmapExample1, GxEPD_WIDTH, h, GxEPD_RED);
+  display.update();
+  delay(2000);
+#endif
 }
 
-inline void sendData(uint8_t data)
+void showFont(const char name[], const GFXfont* f, uint16_t color)
 {
-    TFT_CS_LOW;
-    TFT_DC_HIGH;
-    SPI.transfer(data);
-    TFT_CS_HIGH;
+  display.fillScreen(GxEPD_WHITE);
+  display.setTextColor(GxEPD_BLACK);
+  display.setFont(f);
+  display.setCursor(0, 0);
+  display.println();
+  display.println(name);
+  display.println(" !\"#$%&'()*+,-./");
+  display.println("0123456789:;<=>?");
+  display.println("@ABCDEFGHIJKLMNO");
+  display.println("PQRSTUVWXYZ[\\]^_");
+  display.setTextColor(color);
+  display.println("`abcdefghijklmno");
+  display.println("pqrstuvwxyz{|}~ ");
+  display.update();
+  delay(5000);
 }
 
-void MCU_write_flash(uint8_t command)
-{
-  SPI.transfer(command);
-}
-
-void pic_display (unsigned char write)
-{
-  unsigned long int i;
-	unsigned char j,temp1,temp2,temp3;
-
-
-	sendCMD(0x10);	       //Start picture update
-
-	for(i=0;i<61440;i++)
-	{
-		temp1 = 0XFF;
-    sendData(write);
-		for(j=0;j<4;j++)
-		{
-			temp2 = temp1&0xc0 ;
-			if(temp2 == 0xc0)
-				temp3 = 0x00;
-			else if(temp2 == 0x00)
-				temp3 = 0x03;
-			else
-				temp3 = 0x04;
-
-			temp1 <<= 2;
-			temp3 <<= 4;
-			j++;
-
-			temp2 = temp1&0xc0 ;
-			if(temp2 == 0xc0)
-				temp3 |= 0x00;
-			else if(temp2 == 0x00)
-				temp3 |= 0x03;
-			else
-				temp3 |= 0x04;
-
-			temp1 <<= 2;
-
-
-			//sendData(temp3);
-		}
-	}
-}
-void waitForRedy(){
-  unsigned char busy;
-  do
-  {
-    //sendCMD(0x71);
-    busy = TFT_BUSY;
-    busy =! busy;
-  }
-  while(busy);
-  Serial.println("Redy");
-  delay(200);
-}
-
-void setupPins(){
-  pinMode(TFT_CS_PIN,OUTPUT);
-  pinMode(TFT_DC_PIN,OUTPUT);
-  pinMode(TFT_RST_PIN,OUTPUT);
-  pinMode(TFT_BUSY_PIN,INPUT);
-}
 void setup()
 {
-    Serial.begin(115200);
-    while (!Serial) {
-      ; // wait for serial port to connect. Needed for native USB port only
-    }
-    Serial.println("Setup");
-    setupPins();
-    SPI.begin();
-    SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
+  Serial.begin(115200);
+  Serial.println();
+  Serial.println("setup");
 
-    initDisplay();                                      //init display
-    SPI.endTransaction();
-}
+  display.init();
 
-void initDisplay()
-{
-  TFT_RST_LOW;				//module reset
-  delay(1000);
-  TFT_RST_HIGH;
-  delay(1000);
-  waitForRedy();
-  Serial.println("Reset");
-
-  /**********************************release flash sleep**********************************/
-		sendCMD(0X65);			//FLASH CONTROL
-		sendCMD(0x01);
-
-		TFT_CS_LOW;					//MFCSB À­µÍ
-		MCU_write_flash(0xAB);
-		TFT_CS_HIGH;					//MFCSB À­¸ß
-
-		sendCMD(0X65);			//FLASH CONTROL
-		sendCMD(0x00);
-	/**********************************release flash sleep**********************************/
-
-
-  //POWER SETTING
-  sendCMD  (0x01);
-  sendData (0x37); //110111
-  sendData (0x00);
-
-  //PANNEL SETTING
-  sendCMD  (0x00);
-  sendData (0xCF); //11001111
-  sendData (0x08); //1000
-
-  //booster
-  sendCMD  (0x06);
-  sendData (0xc7); //11000111
-  sendData (0xcc); //11001100
-  sendData (0x28);
-
-  //PLL setting
-  sendCMD  (0x30);
-  sendData (0x3c);
-
-  //TEMPERATURE SETTING
-  sendCMD(0X41);
-  sendData(0x00);
-
-  //VCOM AND DATA INTERVAL SETTING
-  sendCMD(0X50);
-  sendData(0x77);
-
-  //TCON SETTING
-  sendCMD(0X60);
-  sendData(0x22);
-
-  //Resolution
-  sendCMD(0x61);
-  sendData (0x02);   //source 640
-  sendData (0x80);
-  sendData (0x01);   //gate 384
-  sendData (0x80);
-
-  //VDCS SETTING
-  sendCMD(0X82);
-  sendData(0x1E);    //decide by LUT file
-
-  //FLASH MODE
-  sendCMD(0xe5);
-  sendData(0x03);
-
-  pic_display(0xFF);
-
-  //POWER ON
-  sendCMD(0x04);
-  Serial.println("Power on");
-  //waitForRedy();
-
-  //display refresh
-  sendCMD(0x12);
-  delay(100);
-  waitForRedy();
-  /**********************************flash sleep**********************************/
-  		sendCMD(0X65);			//FLASH CONTROL
-  		sendCMD(0x01);
-
-  		TFT_CS_LOW;					//MFCSB À­µÍ
-  		MCU_write_flash(0xB9);
-  		TFT_CS_HIGH;					//MFCSB À­¸ß
-
-  		sendCMD(0X65);			//FLASH CONTROL
-  		sendCMD(0x00);
-  /**********************************flash sleep**********************************/
-  sendCMD(0x02);
-  waitForRedy();
-  //
-  sendCMD(0x07);
-  sendData(0xa5);
+  Serial.println("setup done");
 }
 
 unsigned char write = 1;
 void loop()
 {
+  //showBitmapExample();
+  showFont("FreeMonoBold9pt7b", &FreeMonoBold9pt7b, GxEPD_WHITE);
+  showFont("FreeMonoBold9pt7b", &FreeMonoBold9pt7b, GxEPD_RED);
+  showFont("FreeMonoBold9pt7b", &FreeMonoBold9pt7b, GxEPD_BLACK);
+  delay(10000);
 }
